@@ -40,3 +40,5 @@ jobs:
       with:
         files: dist_upload/*
         token: ${{ secrets.GH_TOKEN }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
