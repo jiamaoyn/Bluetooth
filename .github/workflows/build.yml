@@ -37,7 +37,7 @@ jobs:
           cp dist/main.exe dist_upload/BLETool-${{ runner.os }}.exe
         else
           cd dist
-          zip -r ../dist_upload/BLETool-${{ runner.os }}.zip main.app
+          zip -r ../dist_upload/BLETool-${{ runner.os }}.zip ./
           cd ..
         fi
       shell: bash
