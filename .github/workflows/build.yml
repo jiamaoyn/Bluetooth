@@ -1,0 +1,43 @@
+name: Build and Release BLE GUI
+
+on:
+  push:
+    tags:
+      - 'v1.0.0'   # 例如 v1.0.0 的 tag 会触发打包
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt pyinstaller
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --onefile --windowed main.py
+
+    - name: Rename artifact
+      run: |
+        mkdir dist_upload
+        cp dist/main dist_upload/BLETool-${{ runner.os }} || cp dist/main.exe dist_upload/BLETool-${{ runner.os }}.exe
+
+    - name: Upload release artifact
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist_upload/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
