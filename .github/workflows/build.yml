@@ -33,7 +33,12 @@ jobs:
     - name: Rename artifact
       run: |
         mkdir dist_upload
-        cp dist/main dist_upload/BLETool-${{ runner.os }} || cp dist/main.exe dist_upload/BLETool-${{ runner.os }}.exe
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          cp dist/main.exe dist_upload/BLETool-${{ runner.os }}.exe
+        else
+          cp dist/main dist_upload/BLETool-${{ runner.os }}
+        fi
+      shell: bash
 
     - name: Upload release artifact
       uses: softprops/action-gh-release@v2
