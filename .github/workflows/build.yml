@@ -3,7 +3,7 @@ name: Build and Release BLE GUI
 on:
   push:
     tags:
-      - 'v1.0.0'   # 例如 v1.0.0 的 tag 会触发打包
+      - 'v*'   # 例如 v1.0.0 的 tag 会触发打包
 
 jobs:
   build:
