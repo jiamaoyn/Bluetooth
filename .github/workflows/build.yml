@@ -36,7 +36,9 @@ jobs:
         if [[ "${{ runner.os }}" == "Windows" ]]; then
           cp dist/main.exe dist_upload/BLETool-${{ runner.os }}.exe
         else
-          cp -R dist/main.app dist_upload/BLETool-${{ runner.os }}.app
+          cd dist
+          zip -r ../dist_upload/BLETool-${{ runner.os }}.zip main.app
+          cd ..
         fi
       shell: bash
 
