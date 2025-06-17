@@ -11,7 +11,7 @@ class BluetoothApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("BLE 蓝牙工具")
-        self.setGeometry(300, 300, 800, 400)
+        self.setGeometry(100, 100, 1400, 400)
         self.start_notify_flg = False
         self.devices = []
         self.service = []
@@ -20,31 +20,27 @@ class BluetoothApp(QWidget):
         self.selected_characteristic = None  # 添加这一行来初始化 selected_characteristic
         self.selected_file_path = None  # 保存选择的文件路径
 
-        # layout = QVBoxLayout()
-        # left_widget = QWidget()
-        main_layout = QHBoxLayout()  # 替代原来的 QVBoxLayout
-        # left_layout = QVBoxLayout(left_widget)  # 原有控件放这里
-        # left_widget.setFixedWidth(300)  # 设置左侧区域宽度为 300
+        main_layout = QHBoxLayout()
 
         left_widget = QWidget()
         left_layout = QVBoxLayout()
         left_widget.setLayout(left_layout)
-        left_widget.setFixedWidth(300)
+        left_widget.setFixedWidth(600)
 
         self.scan_button = QPushButton("扫描设备")
         self.scan_button.clicked.connect(self.scan_devices)
         left_layout.addWidget(self.scan_button)
 
         self.device_list = QListWidget()
-        self.device_list.setFixedSize(300, 300)
+        self.device_list.setFixedSize(575, 300)
         left_layout.addWidget(self.device_list)
 
         self.connect_button = QPushButton("连接所选设备")
-        self.connect_button.clicked.connect(self.connect_device)
+        # self.connect_button.clicked.connect(self.connect_device)
+        # self.connect_button.clicked.connect(self.toggle_connection)
+        self.connect_button.clicked.connect(lambda: asyncio.ensure_future(self.toggle_connection()))
         left_layout.addWidget(self.connect_button)
 
-        # self.status_label = QLabel("状态：未连接")
-        # left_layout.addWidget(self.status_label)
 
         self.service_list = QListWidget()  # 新增控件展示服务
         left_layout.addWidget(self.service_list)
@@ -74,10 +70,6 @@ class BluetoothApp(QWidget):
         self.send_file_button = QPushButton("发送文件")
         self.send_file_button.clicked.connect(self.send_selected_file)
         left_layout.addWidget(self.send_file_button)
-
-        # self.notify_button = QPushButton("开启通知")
-        # self.notify_button.clicked.connect(self.start_notifications)
-        # left_layout.addWidget(self.notify_button)
 
         main_layout.addWidget(left_widget)
         # 新增日志显示区域
@@ -112,7 +104,7 @@ class BluetoothApp(QWidget):
             self.device_list.addItem(f"{d.name or '未知设备'} [{d.address}]")
         self.append_log("状态：扫描完成")
 
-    def connect_device(self):
+    async def connect_device(self):
         index = self.device_list.currentRow()
         if index < 0 or index >= len(self.devices):
             self.append_log("请选择一个设备")
@@ -128,7 +120,7 @@ class BluetoothApp(QWidget):
             await self.client.connect()
 
             self.append_log(f"已连接: {device.name or device.address}")
-
+            self.connect_button.setText("断开设备")
             self.services = self.client.services
             self.service_list.clear()  # 清空之前的服务列表
             for service in self.services:
@@ -142,6 +134,23 @@ class BluetoothApp(QWidget):
         except Exception as e:
             self.append_log(f"连接失败: {str(e)}")
 
+    async def disconnect_device(self):
+        if self.client:
+            await self.client.disconnect()
+            self.log_output.append("设备已断开连接")
+            # 这里可以加延时，确保断开事件发回
+            await asyncio.sleep(1)
+        self.client = None
+        self.selected_device = None
+        self.selected_characteristic = None
+        self.connect_button.setText("连接所选设备")
+
+    async def toggle_connection(self):
+        if self.client and self.client.is_connected:  # 假设你的client有is_connected()方法
+            await self.disconnect_device()
+        else:
+            await self.connect_device()
+
     def read_characteristic(self):
         self.append_log("按钮点击，开始读取特征")
         if self.selected_characteristic:
@@ -153,8 +162,7 @@ class BluetoothApp(QWidget):
         try:
             self.append_log(f"正在读取特征: {characteristic}")
             value = await self.client.read_gatt_char(characteristic)
-            self.append_log(f"读取到的特征值: {value}")  # 打印返回值
-            self.append_log(f"读取成功: {value}")
+            self.append_log(f"读取成功: 0x{value.hex()}")
         except Exception as e:
             self.append_log(f"读取失败: {str(e)}")  # 打印错误信息
 
@@ -168,40 +176,11 @@ class BluetoothApp(QWidget):
 
     async def _write_characteristic(self, characteristic, data):
         try:
-            self.append_log(f"尝试写入: {characteristic} -> {data}")
+            self.append_log("尝试写入: {} -> {}".format(characteristic, data.hex()))
             await self.client.write_gatt_char(characteristic, data)
             self.append_log("写入成功")
         except Exception as e:
             self.append_log(f"写入失败: {str(e)}")
-
-    def start_notifications(self):
-        if self.selected_characteristic:
-            if not self.start_notify_flg:
-                asyncio.ensure_future(self._start_notifications(self.selected_characteristic))
-            else:
-                asyncio.ensure_future(self._stop_notifications(self.selected_characteristic))
-
-    async def _start_notifications(self, characteristic):
-        def notification_handler(sender: int, data: bytearray):
-            self.append_log(f"收到通知: {data}")
-
-        try:
-            await self.client.start_notify(characteristic, notification_handler)
-            self.append_log("通知已开启")
-            self.start_notify_flg = True
-            # self.notify_button.setText("关闭通知")
-        except Exception as e:
-            self.append_log(f"开启通知失败: {str(e)}")
-
-    async def _stop_notifications(self, characteristic):
-        try:
-            await self.client.stop_notify(characteristic)
-            self.start_notify_flg = False
-            self.append_log("通知已关闭")
-            # self.notify_button.setText("开启通知")
-            self.append_log(f"已停止特征 {characteristic} 的通知")
-        except Exception as e:
-            self.append_log(f"关闭通知失败: {str(e)}")
 
     def choose_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "选择要发送的文件", "", "所有文件 (*)")
