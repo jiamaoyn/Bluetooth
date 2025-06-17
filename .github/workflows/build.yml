@@ -16,10 +16,6 @@ jobs:
           - os: macos-latest
             runner_label: macos-latest
             suffix: .app
-          - os: self-hosted
-            runner_label: [self-hosted, macOS, X64]
-            suffix: .app
-            name: macos-intel
 
     runs-on: ${{ matrix.runner_label }}
 
